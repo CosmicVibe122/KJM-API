@@ -2,13 +2,19 @@ package com.kjm_sports.controller;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.DeleteMapping;
 
 import com.kjm_sports.model.Boleta;
 import com.kjm_sports.model.DetalleBoleta;
@@ -32,7 +38,24 @@ public class BoletaController {
         return boletaRepository.findAll();
     }
 
-    // CREAR UNA VENTA (COMPLEJA)
+    // Ver boletas por usuario
+    @GetMapping("/usuario/{usuarioId}")
+    public List<Boleta> listarBoletasPorUsuario(@PathVariable Long usuarioId) {
+        return boletaRepository.findByUsuario_Id(usuarioId);
+    }
+
+    // Ver boleta por id
+    @GetMapping("/{id}")
+    public ResponseEntity<?> obtenerBoleta(@PathVariable Long id) {
+        Optional<Boleta> boleta = boletaRepository.findById(id);
+        if (boleta.isPresent()) {
+            return ResponseEntity.ok(boleta.get());
+        }
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", "Boleta no encontrada"));
+    }
+
+   
   @PostMapping
     public Boleta crearBoleta(@RequestBody Boleta boleta) {
         boleta.setFecha(LocalDateTime.now());
@@ -42,8 +65,8 @@ public class BoletaController {
             Producto productoOriginal = productoRepository.findById(detalle.getProducto().getId()).orElse(null);
             
             if (productoOriginal != null) {
-                // --- CONTROL DE STOCK ---
-                // Si no hay suficiente stock, lanzamos un error (opcional, pero recomendado)
+                // CONTROL DE STOCK 
+               
                 if (productoOriginal.getStock() < detalle.getCantidad()) {
                      throw new RuntimeException("No hay suficiente stock para el producto: " + productoOriginal.getNombre());
                 }
@@ -52,7 +75,6 @@ public class BoletaController {
                 productoOriginal.setStock(productoOriginal.getStock() - detalle.getCantidad());
                 // Guardamos el producto con el nuevo stock
                 productoRepository.save(productoOriginal);
-                // ------------------------
 
                 detalle.setPrecioUnitario(productoOriginal.getPrecio());
                 detalle.setSubtotal(detalle.getCantidad() * productoOriginal.getPrecio());
@@ -63,5 +85,16 @@ public class BoletaController {
 
         boleta.setTotal(totalCalculado);
         return boletaRepository.save(boleta);
+    }
+
+    // Eliminar boleta por id
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> eliminarBoleta(@PathVariable Long id) {
+        if (!boletaRepository.existsById(id)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Boleta no encontrada"));
+        }
+        boletaRepository.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
     }

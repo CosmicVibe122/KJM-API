@@ -34,12 +34,21 @@ public class UsuarioController {
 
     // 2. POST: Crear nuevo usuario (Registro)
     @PostMapping
-    public Usuario crearUsuario(@RequestBody Usuario usuario) {
+    public ResponseEntity<?> crearUsuario(@RequestBody Usuario usuario) {
+        // Validaciones de unicidad
+        if (usuario.getEmail() != null && usuarioRepository.existsByEmail(usuario.getEmail())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Email ya está registrado");
+        }
+        if (usuario.getTelefono() != null && usuarioRepository.existsByTelefono(usuario.getTelefono())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Teléfono ya está registrado");
+        }
         if (usuario.getRol() == null || usuario.getRol().isEmpty()) {
-            usuario.setRol("USER"); 
+            usuario.setRol("cliente"); 
         }
         // 🚨 ADVERTENCIA: Guarda la contraseña en texto plano
-        return usuarioRepository.save(usuario); 
+        Usuario creado = usuarioRepository.save(usuario);
+        creado.setPassword(null);
+        return ResponseEntity.status(HttpStatus.CREATED).body(creado);
     }
     
     // 3. GET: Obtener usuario por ID
@@ -53,7 +62,7 @@ public class UsuarioController {
 
     // --- 4. ENDPOINT DE LOGIN (Comparación de texto plano) ---
     @PostMapping("/login")
-    public ResponseEntity<Usuario> login(@RequestBody Map<String, String> credenciales) {
+    public ResponseEntity<?> login(@RequestBody Map<String, String> credenciales) {
         String email = credenciales.get("email");
         String password = credenciales.get("password");
 
@@ -69,17 +78,28 @@ public class UsuarioController {
             }
         }
         
-        // Error 401: No autorizado (credenciales incorrectas o contraseña NULL)
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build(); 
+            // Error 401: No autorizado (credenciales incorrectas o contraseña NULL)
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(java.util.Map.of("error", "Credenciales inválidas")); 
     }
     // 5. PUT y DELETE
     
     @PutMapping("/{id}")
-    public ResponseEntity<Usuario> actualizarUsuario(@PathVariable Long id, @RequestBody Usuario detalles) {
+    public ResponseEntity<?> actualizarUsuario(@PathVariable Long id, @RequestBody Usuario detalles) {
         Optional<Usuario> usuarioOptional = usuarioRepository.findById(id);
 
         if (usuarioOptional.isPresent()) {
             Usuario userExistente = usuarioOptional.get();
+
+            // Validaciones de unicidad en actualización
+            if (detalles.getEmail() != null && !detalles.getEmail().equals(userExistente.getEmail())
+                    && usuarioRepository.existsByEmail(detalles.getEmail())) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body("Email ya está registrado");
+            }
+            if (detalles.getTelefono() != null && !detalles.getTelefono().equals(userExistente.getTelefono())
+                    && usuarioRepository.existsByTelefono(detalles.getTelefono())) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body("Teléfono ya está registrado");
+            }
             
             // Lógica de actualización (sin actualizar contraseña si viene vacía)
             userExistente.setNombre(detalles.getNombre());
@@ -101,12 +121,16 @@ public class UsuarioController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminarUsuario(@PathVariable Long id) {
-        if (usuarioRepository.existsById(id)) {
+    public ResponseEntity<?> eliminarUsuario(@PathVariable Long id) {
+        if (!usuarioRepository.existsById(id)) {
+            return ResponseEntity.notFound().build();
+        }
+        try {
             usuarioRepository.deleteById(id);
-            return ResponseEntity.ok().build(); 
-        } else {
-            return ResponseEntity.notFound().build(); 
+            return ResponseEntity.ok().build();
+        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body("No se puede eliminar el usuario: tiene boletas asociadas");
         }
     }
 }
