@@ -1,11 +1,14 @@
 # KJM Sports API
 
-API REST básica para la tienda KJM.
+API REST para la tienda deportiva KJM. Implementada con Spring Boot 3, MySQL y JPA. Incluye documentación OpenAPI (Swagger UI) y un cargador de datos de ejemplo para desarrollo.
 
-## Requisitos
-- Java JDK 21 (con `JAVA_HOME` configurado)
-- MySQL 8.x en ejecución
-- Maven Wrapper (`mvnw.cmd` incluido)
+## Stack
+- Spring Boot 3.5.x
+- Java 21
+- Spring Data JPA (Hibernate)
+- MySQL 8.x
+- Lombok
+- springdoc-openapi (Swagger UI)
 
 ## Endpoints
 Base: `/api`
