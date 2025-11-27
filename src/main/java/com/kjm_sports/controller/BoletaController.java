@@ -76,6 +76,8 @@ public class BoletaController {
                 // Guardamos el producto con el nuevo stock
                 productoRepository.save(productoOriginal);
 
+                // Asegurar que el detalle referencia el producto gestionado
+                detalle.setProducto(productoOriginal);
                 detalle.setPrecioUnitario(productoOriginal.getPrecio());
                 detalle.setSubtotal(detalle.getCantidad() * productoOriginal.getPrecio());
                 totalCalculado += detalle.getSubtotal();
